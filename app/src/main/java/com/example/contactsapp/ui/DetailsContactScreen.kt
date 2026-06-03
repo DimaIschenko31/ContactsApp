@@ -3,10 +3,7 @@ package com.example.contactsapp.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,10 +23,15 @@ fun DetailsContactScreen(
     onBack: () -> Unit,
     onDeleted: () -> Unit
 ) {
-    val contact = viewModel.getContact(contactId)
+    // Отримуємо контакт напряму з Room через Flow
+    val contact by viewModel.getContactById(contactId)
+        .collectAsState(initial = null)
 
     if (contact == null) {
-        onDeleted(); return
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
     Scaffold(
@@ -50,7 +52,6 @@ fun DetailsContactScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Avatar card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -72,22 +73,21 @@ fun DetailsContactScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(contact.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(contact!!.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // Info card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    InfoRow(icon = Icons.Default.Phone, label = "Телефон", value = contact.phone)
+                Column(modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    InfoRow(Icons.Default.Phone, "Телефон", contact!!.phone)
                     Divider()
-                    InfoRow(icon = Icons.Default.Email, label = "Email",
-                        value = contact.email.ifBlank { "—" })
+                    InfoRow(Icons.Default.Email, "Email", contact!!.email.ifBlank { "—" })
                 }
             }
 
@@ -118,7 +118,8 @@ fun DetailsContactScreen(
 @Composable
 fun InfoRow(icon: ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = Color(0xFF1976D2), modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = Color(0xFF1976D2),
+            modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(label, fontSize = 12.sp, color = Color(0xFF888888))

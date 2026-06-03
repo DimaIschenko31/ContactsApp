@@ -1,38 +1,58 @@
 package com.example.contactsapp.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.example.contactsapp.model.Contact
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.example.contactsapp.data.local.ContactEntity
+import com.example.contactsapp.data.repository.ContactRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class ContactViewModel : ViewModel() {
+class ContactViewModel(
+    private val repository: ContactRepository
+) : ViewModel() {
 
-    private var nextId = 4
-
-    private val _contacts = MutableStateFlow(
-        listOf(
-            Contact(id = 1, name = "Олена Коваль",    phone = "+380501234567", email = "olena@example.com"),
-            Contact(id = 2, name = "Максим Бондар",   phone = "+380671234567", email = "max@example.com"),
-            Contact(id = 3, name = "Софія Мельник",   phone = "+380931234567", email = "sofia@example.com")
-        )
+    val contacts = repository.contacts.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
     )
-    val contacts: StateFlow<List<Contact>> = _contacts.asStateFlow()
+
+    fun getContactById(id: Int) = repository.getContactById(id)
 
     fun addContact(name: String, phone: String, email: String) {
-        val new = Contact(id = nextId++, name = name, phone = phone, email = email)
-        _contacts.value = _contacts.value + new
-    }
-
-    fun deleteContact(id: Int) {
-        _contacts.value = _contacts.value.filter { it.id != id }
-    }
-
-    fun updateContact(id: Int, name: String, phone: String, email: String) {
-        _contacts.value = _contacts.value.map { c ->
-            if (c.id == id) c.copy(name = name, phone = phone, email = email) else c
+        viewModelScope.launch {
+            repository.addContact(
+                ContactEntity(name = name, phone = phone, email = email)
+            )
         }
     }
 
-    fun getContact(id: Int): Contact? = _contacts.value.find { it.id == id }
+    fun updateContact(id: Int, name: String, phone: String, email: String) {
+        viewModelScope.launch {
+            repository.updateContact(
+                ContactEntity(id = id, name = name, phone = phone, email = email)
+            )
+        }
+    }
+
+    fun deleteContact(id: Int) {
+        viewModelScope.launch {
+            repository.deleteContact(ContactEntity(id = id, name = "", phone = ""))
+        }
+    }
+}
+
+// Фабрика для створення ViewModel з параметром
+class ContactViewModelFactory(
+    private val repository: ContactRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(ContactViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return ContactViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }

@@ -1,18 +1,28 @@
 package com.example.contactsapp.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.contactsapp.data.local.DatabaseProvider
+import com.example.contactsapp.data.repository.ContactRepository
 import com.example.contactsapp.viewmodel.ContactViewModel
+import com.example.contactsapp.viewmodel.ContactViewModelFactory
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val viewModel: ContactViewModel = viewModel()
+
+    val context = LocalContext.current
+    val database = DatabaseProvider.getDatabase(context)
+    val repository = ContactRepository(database.contactDao())
+    val viewModel: ContactViewModel = viewModel(
+        factory = ContactViewModelFactory(repository)
+    )
 
     NavHost(navController = navController, startDestination = "list") {
         composable("list") {
